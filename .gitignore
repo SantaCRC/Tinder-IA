@@ -1,0 +1,8 @@
+.env
+_pycache__
+.vscode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+model.pkl
