@@ -19,7 +19,7 @@ This project is a hobby initiative to explore the potential of AI in learning an
 
 1. **Clone the repository:**
    ```sh
-   git clone <repository-url>
+   git clone https://github.com/SantaCRC/Tinder-IA.git
 2. **Install dependencies:**
    ```sh
    pip install -r requirements.txt
