@@ -9,6 +9,7 @@ from deepface import DeepFace
 import numpy as np
 import random
 import time
+import auth
 
 # Load environment variables from a .env file
 load_dotenv()
@@ -36,9 +37,10 @@ def check_api_connection(api_url, auth_token):
     response = requests.get(URL, headers=headers)
     
     if response.status_code == 401:
-        raise PermissionError("Invalid AUTH Token. Please update the TINDER_API_TOKEN in the .env file.")
-    
-    response.raise_for_status()
+        print("Invalid AUTH Token. Please update the TINDER_API_TOKEN in the .env file.")
+        auth.main()
+        check_api_connection(api_url, auth_token)
+        
     print("Successfully connected to the Tinder API.")
     return response.json()
 
