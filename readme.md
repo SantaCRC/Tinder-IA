@@ -26,9 +26,9 @@ This project is a hobby initiative to explore the potential of AI in learning an
 3. **Run the bot:**
    ```sh
    python main.py
-If it is your first time running the bot, it will create a .env file. Add your token auth information in this file, then run the bot again. (In future versions, the auth will be done automatically.)
+If it is your first time running the bot, it will create a .env file and run an authentication process.
 
-4. **Add your Tinder account:**
+1. **Add your Tinder account:**
    - Open Tinder in your browser.
    - Log in to your account.
    - Copy the token from the network tab in the developer tools.

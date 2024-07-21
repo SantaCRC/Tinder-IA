@@ -1,13 +1,14 @@
 import os
+import sys
 import requests
 import random
 import string
 import uuid
-from authgateway import *
 import secrets
 from pathlib import Path
-import sys
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
+from authgateway import *
+import customtkinter as ctk
 
 class SMSAuthException(BaseException):
     pass
@@ -46,7 +47,7 @@ class TinderSMSAuth(object):
         response = self._postloginreq(body, headers)
         print(response)
         if "validatePhoneOtpState" in response.keys() and response["validatePhoneOtpState"]["smsSent"]:
-            otpresponse = input("OTP Response from SMS: ")
+            otpresponse = self.get_otp_input("OTP Response from SMS")
             resp = PhoneOtp(phone=self.phonenumber, otp=otpresponse)
             messageresponse = AuthGatewayRequest(phone_otp=resp)
             seconds += random.uniform(30, 90)
@@ -59,10 +60,10 @@ class TinderSMSAuth(object):
             header_timer = {"app-session-time-elapsed": format(seconds, ".3f")}
             return self.loginwrapper(messageresponse, seconds, header_timer)
         elif "validateEmailOtpState" in response.keys() and response["validateEmailOtpState"]["emailSent"]:
-            emailoptresponse = input("Check your email and input the verification code just sent to you: ")
+            emailoptresponse = self.get_otp_input("Check your email and input the verification code just sent to you")
             refreshtoken = response["validateEmailOtpState"]["refreshToken"]
             if self.email is None:
-                self.email = input("Input your email: ")
+                self.email = self.get_otp_input("Input your email")
             messageresponse = AuthGatewayRequest(email_otp=EmailOtp(otp=emailoptresponse, email=self.email, refresh_token=refreshtoken))
             seconds += random.uniform(30, 90)
             header_timer = {"app-session-time-elapsed": format(seconds, ".3f")}
@@ -70,14 +71,14 @@ class TinderSMSAuth(object):
         elif "getEmailState" in response.keys():
             refreshtoken = response['getEmailState']['refreshToken']
             if self.email is None:
-                self.email = input("Input your email: ")
+                self.email = self.get_otp_input("Input your email")
             seconds += random.uniform(30, 90)
             header_timer = {"app-session-time-elapsed": format(seconds, ".3f")}
             messageresponse = AuthGatewayRequest(email=Email(email=self.email, refresh_token=refreshtoken))
             return self.loginwrapper(messageresponse, seconds, header_timer)
         elif "error" in response.keys() and response["error"]["message"] == 'INVALID_REFRESH_TOKEN':
             print("Refresh token error, restarting auth")
-            phonenumber = input("phone number (starting with 1, numbers only): ")
+            phonenumber = self.get_otp_input("phone number (starting with 1, numbers only)")
             self.phonenumber = phonenumber
             messageresponse = AuthGatewayRequest(phone=Phone(phone=self.phonenumber))
             seconds += random.uniform(30, 90)
@@ -100,7 +101,7 @@ class TinderSMSAuth(object):
             messageout = AuthGatewayRequest(get_initial_state=GetInitialState(refresh_token=self.refreshtoken))
         else:
             if self.phonenumber is None:
-                self.phonenumber = input("phone number (starting with 1, numbers only): ")
+                self.phonenumber = self.get_otp_input("phone number (starting with 1, numbers only)")
             messageout = AuthGatewayRequest(phone=Phone(phone=self.phonenumber))
         seconds = random.uniform(100, 250)
         headers = {
@@ -130,7 +131,7 @@ class TinderSMSAuth(object):
         print("Auth token saved to .env")
 
     def save_tokens_to_env(self, key, value):
-        env_path = dotenv.find_dotenv()
+        env_path = find_dotenv()
         if not env_path:
             env_path = '.env'
         with open(env_path, 'r') as file:
@@ -143,6 +144,30 @@ class TinderSMSAuth(object):
                     file.write(line)
             if not any(line.startswith(key + '=') for line in lines):
                 file.write(f"{key}={value}\n")
+
+    def get_otp_input(self, prompt):
+        root = ctk.CTk()
+        root.title("Input Required")
+
+        frame = ctk.CTkFrame(root)
+        frame.pack(padx=20, pady=20, fill="both", expand=True)
+
+        label = ctk.CTkLabel(frame, text=prompt)
+        label.pack(padx=20, pady=10)
+
+        entry = ctk.CTkEntry(frame)
+        entry.pack(padx=20, pady=10)
+        entry.focus_set()
+
+        def on_submit():
+            self.otp_input = entry.get()
+            root.destroy()
+
+        submit_button = ctk.CTkButton(frame, text="Submit", command=on_submit)
+        submit_button.pack(pady=20)
+
+        root.mainloop()
+        return self.otp_input
 
 def main():
     print("This script will use the sms login to obtain the auth token, which will be saved to .env")
