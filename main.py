@@ -1,24 +1,25 @@
-import os
-import requests
-import pickle
-import queue
+# main.py
 import threading
+import customtkinter as ctk
+import queue
 import time
-import tkinter as tk
+from tkinter import ttk, WORD, END
 from tkinter.scrolledtext import ScrolledText
 from PIL import Image, ImageTk
-import io
 import random
 from config import get_config_value
 from dotenv import load_dotenv
-from deepface import DeepFace
-import numpy as np
-import customtkinter
-import sys
-import dotenv
-import auth
 import train
+import auth
+import requests
+import os
+import numpy as np
+import pickle
+import sys
+import io
+import dotenv
 
+import tkinter as tk  # Importar tkinter como tk
 
 # Variables globales para las IDs de los últimos perfiles
 last_liked_id = None
@@ -31,6 +32,9 @@ passed_image_queue = queue.Queue()
 
 # Variable para controlar si el bot está corriendo
 bot_running = False
+
+API_URL = get_config_value('API_URL')
+headers = {'X-Auth-Token': os.getenv('TINDER_API_TOKEN')}
 
 def run_bot():
     global bot_thread, bot_running
@@ -59,9 +63,9 @@ def update_console_output():
     while not console_queue.empty():
         message = console_queue.get_nowait()
         console_output.configure(state='normal')
-        console_output.insert(tk.END, message + '\n')
+        console_output.insert(END, message + '\n')
         console_output.configure(state='disabled')
-        console_output.yview(tk.END)
+        console_output.yview(END)
     app.after(100, update_console_output)
 
 def update_images():
@@ -77,8 +81,7 @@ def update_images():
         passed_image_label.image = img
     app.after(100, update_images)
 
-def custom_print(*args, **kwargs):
-    message = ' '.join(map(str, args))
+def custom_print(message):
     console_queue.put(message)
 
 def like_last_passed_profile():
@@ -114,59 +117,67 @@ def load_env_vars():
     API_URL = get_config_value('API_URL')
     X_AUTH_TOKEN = os.getenv('TINDER_API_TOKEN')
     
-    if not X_AUTH_TOKEN:
-        raise ValueError("TINDER_API_TOKEN is missing in the .env file.")
+    if not API_URL or not X_AUTH_TOKEN:
+        raise ValueError("API_URL or TINDER_API_TOKEN is missing in the .env file.")
     
     return API_URL, X_AUTH_TOKEN
 
-sys.stdout.write = custom_print
-sys.stderr.write = custom_print
+sys.stdout.write = lambda message: custom_print(message)
+sys.stderr.write = lambda message: custom_print(message)
 
-customtkinter.set_appearance_mode("System")
-customtkinter.set_default_color_theme("blue")
+ctk.set_appearance_mode("System")
+ctk.set_default_color_theme("blue")
 
-app = customtkinter.CTk()
+app = ctk.CTk()
 app.geometry("1000x800")
 app.title("Tinder Bot")
 
-image_frame = customtkinter.CTkFrame(master=app)
+# Use a tab control at the top
+tab_control = ttk.Notebook(app)
+tab_control.pack(expand=1, fill="both")
+
+# Main frame
+main_frame = ctk.CTkFrame(master=tab_control)
+tab_control.add(main_frame, text="Main")
+
+image_frame = ctk.CTkFrame(master=main_frame)
 image_frame.pack(pady=10)
 
-liked_image_label = customtkinter.CTkLabel(master=image_frame, text="No image")
+liked_image_label = ctk.CTkLabel(master=image_frame, text="No image")
 liked_image_label.grid(row=1, column=0, padx=10)
 
-passed_image_label = customtkinter.CTkLabel(master=image_frame, text="No image")
+passed_image_label = ctk.CTkLabel(master=image_frame, text="No image")
 passed_image_label.grid(row=1, column=1, padx=10)
 
-liked_label = customtkinter.CTkLabel(master=image_frame, text="Last Liked")
+liked_label = ctk.CTkLabel(master=image_frame, text="Last Liked")
 liked_label.grid(row=0, column=0, padx=10)
 
-passed_label = customtkinter.CTkLabel(master=image_frame, text="Last Passed")
+passed_label = ctk.CTkLabel(master=image_frame, text="Last Passed")
 passed_label.grid(row=0, column=1, padx=10)
 
-button_frame = customtkinter.CTkFrame(master=app)
+button_frame = ctk.CTkFrame(master=main_frame)
 button_frame.pack(pady=10)
 
-run_button = customtkinter.CTkButton(master=button_frame, text="Run Tinder Bot", command=run_bot)
+run_button = ctk.CTkButton(master=button_frame, text="Run Tinder Bot", command=run_bot)
 run_button.grid(row=0, column=1, padx=10)
 
-stop_button = customtkinter.CTkButton(master=button_frame, text="Stop Tinder Bot", command=stop_bot)
+stop_button = ctk.CTkButton(master=button_frame, text="Stop Tinder Bot", command=stop_bot)
 stop_button.grid(row=0, column=2, padx=10)
 
-like_button = customtkinter.CTkButton(master=button_frame, text="Like last passed profile", command=lambda: like_last_passed_profile())
+like_button = ctk.CTkButton(master=button_frame, text="Like last passed profile", command=like_last_passed_profile)
 like_button.grid(row=0, column=3, padx=10)
 
-pass_button = customtkinter.CTkButton(master=button_frame, text="Pass last liked profile", command=lambda: pass_last_liked_profile())
+pass_button = ctk.CTkButton(master=button_frame, text="Pass last liked profile", command=pass_last_liked_profile)
 pass_button.grid(row=0, column=0, padx=10)
 
-frame = customtkinter.CTkFrame(master=app)
+view_liked_profiles_button = ctk.CTkButton(master=button_frame, text="View Liked Profiles")
+view_liked_profiles_button.grid(row=0, column=4, padx=10)
+
+frame = ctk.CTkFrame(master=main_frame)
 frame.pack(pady=10, padx=10, fill="both", expand=True)
 
-console_output = ScrolledText(frame, wrap=tk.WORD, state='disabled', bg="black", fg="white")
+console_output = ScrolledText(frame, wrap=WORD, state='disabled', bg="black", fg="white")
 console_output.pack(fill="both", expand=True)
-
-API_URL, auth_token = load_env_vars()
-headers = {'X-Auth-Token': auth_token}
 
 stop_event = threading.Event()
 
@@ -215,10 +226,14 @@ def like_to_you(api_url, headers):
     return response.json()
 
 def get_recs(api_url, headers):
-    URL = f"{api_url}/v2/recs/core"
-    response = requests.get(URL, headers=headers)
-    response.raise_for_status()
-    return response.json()['data']['results']
+    try:
+        URL = f"{api_url}/v2/recs/core"
+        response = requests.get(URL, headers=headers)
+        response.raise_for_status()
+        return response.json()['data']['results']
+    except requests.RequestException as e:
+        custom_print(f"An error occurred: {e}")
+        return []
 
 def save_tokens_to_env(key, value):
     env_path = dotenv.find_dotenv()
@@ -232,7 +247,7 @@ def save_tokens_to_env(key, value):
                 file.write(f"{key}={value}\n")
             else:
                 file.write(line)
-        if not any(line.startswith(key + '=') for line in lines):
+        if not any (line.startswith(key + '=') for line in lines):
             file.write(f"{key}={value}\n")
 
 def run():

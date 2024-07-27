@@ -16,7 +16,7 @@ This project is a hobby initiative to explore the potential of AI in learning an
 - [ ] Messaging on Tinder
 - [ ] Matching on Tinder
 - [ ] Super liking on Tinder
-- [ ] Auto-login
+- [x] Auto-login
 
 ## Installation
 
