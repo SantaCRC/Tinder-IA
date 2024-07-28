@@ -1,4 +1,3 @@
-# main.py
 import threading
 import customtkinter as ctk
 import queue
@@ -18,6 +17,7 @@ import pickle
 import sys
 import io
 import dotenv
+import liked_profiles
 
 import tkinter as tk  # Importar tkinter como tk
 
@@ -106,6 +106,9 @@ def pass_last_liked_profile():
     response.raise_for_status()
     return response.json()
 
+def open_liked_profiles():
+    threading.Thread(target=liked_profiles.main).start()
+
 def load_env_vars():
     if not os.path.exists('.env'):
         with open('.env', 'w') as file:
@@ -170,7 +173,7 @@ like_button.grid(row=0, column=3, padx=10)
 pass_button = ctk.CTkButton(master=button_frame, text="Pass last liked profile", command=pass_last_liked_profile)
 pass_button.grid(row=0, column=0, padx=10)
 
-view_liked_profiles_button = ctk.CTkButton(master=button_frame, text="View Liked Profiles")
+view_liked_profiles_button = ctk.CTkButton(master=button_frame, text="View Liked Profiles", command=open_liked_profiles)
 view_liked_profiles_button.grid(row=0, column=4, padx=10)
 
 frame = ctk.CTkFrame(master=main_frame)
@@ -229,7 +232,7 @@ def get_recs(api_url, headers):
     try:
         URL = f"{api_url}/v2/recs/core"
         response = requests.get(URL, headers=headers)
-        response.raise_for_status()
+        #response.raise_for_status()
         return response.json()['data']['results']
     except requests.RequestException as e:
         custom_print(f"An error occurred: {e}")
