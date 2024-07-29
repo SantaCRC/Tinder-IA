@@ -133,6 +133,9 @@ ctk.set_default_color_theme("blue")
 
 app = ctk.CTk()
 app.geometry("1000x800")
+#maximizar la ventana
+app.after(0, lambda:app.state('zoomed'))
+app.lift()
 app.title("Tinder Bot")
 
 # Use a tab control at the top
@@ -145,11 +148,11 @@ tab_control.add(main_frame, text="Main")
 
 image_frame = ctk.CTkFrame(master=main_frame)
 image_frame.pack(pady=10)
-
-liked_image_label = ctk.CTkLabel(master=image_frame, text="No image")
+imagen = ImageTk.PhotoImage(Image.open("image.png").resize((400, 400)))
+liked_image_label = ctk.CTkLabel(master=image_frame, image=imagen, text="No image")
 liked_image_label.grid(row=1, column=0, padx=10)
 
-passed_image_label = ctk.CTkLabel(master=image_frame, text="No image")
+passed_image_label = ctk.CTkLabel(master=image_frame, image=imagen, text="No image")
 passed_image_label.grid(row=1, column=1, padx=10)
 
 liked_label = ctk.CTkLabel(master=image_frame, text="Last Liked")
@@ -158,13 +161,13 @@ liked_label.grid(row=0, column=0, padx=10)
 passed_label = ctk.CTkLabel(master=image_frame, text="Last Passed")
 passed_label.grid(row=0, column=1, padx=10)
 
-button_frame = ctk.CTkFrame(master=main_frame)
+button_frame = ctk.CTkFrame(master=main_frame, fg_color="transparent")
 button_frame.pack(pady=10)
 
-run_button = ctk.CTkButton(master=button_frame, text="Run Tinder Bot", command=run_bot)
+run_button = ctk.CTkButton(master=button_frame, text="Run Tinder Bot", command=run_bot, bg_color="green", fg_color="green")
 run_button.grid(row=0, column=1, padx=10)
 
-stop_button = ctk.CTkButton(master=button_frame, text="Stop Tinder Bot", command=stop_bot)
+stop_button = ctk.CTkButton(master=button_frame, text="Stop Tinder Bot", command=stop_bot, bg_color="red", state='disabled', fg_color="red")
 stop_button.grid(row=0, column=2, padx=10)
 
 like_button = ctk.CTkButton(master=button_frame, text="Like last passed profile", command=like_last_passed_profile)

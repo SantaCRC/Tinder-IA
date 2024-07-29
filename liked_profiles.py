@@ -5,7 +5,8 @@ import customtkinter as ctk
 import threading
 from config import get_config_value
 from PIL import Image
-import io
+import io, datetime
+from see_profile import show_profile
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +19,9 @@ X_AUTH_TOKEN = os.getenv('TINDER_API_TOKEN')
 all_likes = []
 
 stop_event = threading.Event()
+
+# Ruta de la imagen de placeholder
+PLACEHOLDER_IMAGE_PATH = "image.png"
 
 def get_headers():
     """Generate the headers for the API requests."""
@@ -33,6 +37,7 @@ def get_headers():
 def fetch_all_likes():
     """Retrieve all likes sent by the user and store them globally."""
     global all_likes
+    all_likes.clear()  # Clear previous likes
     url = f"{API_URL}/v2/my-likes"
     likes = []
     page_token = None
@@ -56,7 +61,6 @@ def fetch_all_likes():
                 break
 
         except requests.RequestException as e:
-            print(f"Error: {e} and token: {X_AUTH_TOKEN}")
             break
 
     all_likes = likes
@@ -66,30 +70,49 @@ def fetch_and_display_like(like, image_frame, row, col):
     name = user.get('name')
     photos = user.get('photos', [])
     user_id = user.get('_id')
+    bio = user.get('bio')
+    birth_date = user.get('birth_date')
+    # Convertir la cadena de fecha a un objeto datetime
+    birth_date = datetime.datetime.strptime(birth_date, "%Y-%m-%dT%H:%M:%S.%fZ")
+
+    # Obtener la fecha actual
+    today = datetime.datetime.now()
+
+    # Calcular la edad
+    age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+
+    profile_frame = ctk.CTkFrame(master=image_frame)
+    profile_frame.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
+
+    name_label = ctk.CTkLabel(master=profile_frame, text=name, anchor="w")
+    name_label.pack(padx=5, pady=(5, 0))
+
+    label = ctk.CTkLabel(master=profile_frame, text="")
+    label.pack(padx=5, pady=(0, 5))
+    
+    # Mostrar placeholder mientras se carga la imagen
+    placeholder_img = fetch_placeholder_image()
+    label.image = placeholder_img  # Keep a reference to avoid garbage collection
+    label.configure(image=placeholder_img)
+
+    button_frame = ctk.CTkFrame(master=profile_frame, fg_color="transparent")
+    button_frame.pack(padx=5, pady=(0, 5))
+
+    pass_button = ctk.CTkButton(master=button_frame, text="Pass", command=lambda: pass_profile(user_id, pass_button), fg_color="red", width=120)
+    pass_button.grid(row=0, column=0, padx=5)
+    
+    see_more_button = ctk.CTkButton(master=button_frame, text="See profile", command=lambda: see_profile(user_id, name, photos, bio, age), fg_color="blue")
+    see_more_button.grid(row=0, column=1, padx=5)
+
     if photos:
         photo_url = photos[0].get('url')
-        print(f"User: {name}")
-        print(f"User ID: {user_id}")
-        print(f"Photo URL: {photo_url}")
         img = fetch_image(photo_url)
         if img:
-            if not image_frame.winfo_exists():
-                return
-            profile_frame = ctk.CTkFrame(master=image_frame)
-            profile_frame.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
-            name_label = ctk.CTkLabel(master=profile_frame, text=name, anchor="w")
-            name_label.pack(padx=5, pady=(5, 0))
-            label = ctk.CTkLabel(master=profile_frame, text="")
-            label.pack(padx=5, pady=(0, 5))
-            button_frame = ctk.CTkFrame(master=profile_frame, fg_color="transparent")
-            button_frame.pack(padx=5, pady=(0, 5))
-            pass_button = ctk.CTkButton(master=button_frame, text="Pass", command=lambda user_id=user_id: pass_profile(user_id), fg_color="red")
-            pass_button.grid(row=0, column=0, padx=5)
-            see_more_button = ctk.CTkButton(master=button_frame, text="See profile", command=lambda photos=photos: see_more_photos(photos))
-            see_more_button.grid(row=0, column=1, padx=5)
-            label.image = img  # Keep a reference to avoid garbage collection
-            label.configure(image=img)
-        print("-----")
+            try:
+                label.image = img  # Keep a reference to avoid garbage collection
+                label.configure(image=img)
+            except:
+                pass
 
 def start_like_thread(like, image_frame, row, col):
     threading.Thread(target=fetch_and_display_like, args=(like, image_frame, row, col), daemon=True).start()
@@ -101,13 +124,13 @@ def fetch_and_display_likes(image_frame, page_index=0, batch_size=8):
     likes = all_likes[start_index:start_index + batch_size]
 
     if not likes:
-        print("No likes found or an error occurred.")
+        pass  # No likes to display
     else:
-        print(f"Total likes found: {len(likes)}")
         row = 0
         col = 0
         for like in likes:
             if stop_event.is_set():
+                stop_event.clear()
                 break
             start_like_thread(like, image_frame, row, col)
             col += 1
@@ -128,27 +151,33 @@ def fetch_image(url):
         image = image.resize((200, 200))  # Resize image to fit in grid
         return ctk.CTkImage(light_image=image, dark_image=image, size=(200, 200))
     except Exception as e:
-        print(f"Error fetching image: {e}")
+        return fetch_placeholder_image()
+
+def fetch_placeholder_image():
+    try:
+        image = Image.open(PLACEHOLDER_IMAGE_PATH)
+        image = image.resize((200, 200))  # Resize image to fit in grid
+        return ctk.CTkImage(light_image=image, dark_image=image, size=(200, 200))
+    except Exception as e:
         return None
 
-def pass_profile(user_id):
-    print(f"Passing user ID: {user_id}")
+def pass_profile(user_id, button):
     headers = get_headers()
     URL = f"{API_URL}/pass/{user_id}"
     response = requests.get(URL, headers=headers)
     response.raise_for_status()
-    print(response.json())
+    button.configure(text="Passed", state="disabled")
 
-def see_more_photos(photos):
-    print(f"Seeing more photos: {photos}")
-    # Aquí puedes añadir la lógica para ver más fotos del perfil
+def see_profile(user_id, name, photos, bio, age):
+    # Aquí puedes añadir la lógica para ver el perfil
+    show_profile(user_id, name, photos, bio, age)
 
 class LikedProfilesWindow(ctk.CTkToplevel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.geometry("1000x800")
+        #self.geometry("1000x800")
         self.title("Liked Profiles")
-
+        
         self.page_index = 0
         self.batch_size = 8
 
@@ -169,6 +198,12 @@ class LikedProfilesWindow(ctk.CTkToplevel):
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+        self.load_likes()
+
+    def load_likes(self):
+        threading.Thread(target=self._fetch_likes_and_load_page, daemon=True).start()
+
+    def _fetch_likes_and_load_page(self):
         fetch_all_likes()
         self.load_page(self.page_index)
 
@@ -186,12 +221,14 @@ class LikedProfilesWindow(ctk.CTkToplevel):
         self.load_page(self.page_index + 1)
 
     def on_closing(self):
-        global stop_event
-        stop_event.set()
         self.destroy()
 
 def main(is_main=False):
     app = LikedProfilesWindow()
+    # maximizar la ventana
+    # traer a primer plano
+    app.after(0, lambda: app.state('zoomed'))
+    app.lift()
     if is_main:
         app.mainloop()
 

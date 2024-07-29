@@ -90,7 +90,7 @@ def main():
             
     return np.array(valid_photos)
 
-if __name__ == "__main__":
+def train():
     valid_for_train = main()
     if valid_for_train is None:
         print("No valid photos found.")
