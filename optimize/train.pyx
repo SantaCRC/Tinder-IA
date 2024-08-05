@@ -2,6 +2,8 @@ from dotenv import load_dotenv
 import requests
 import os
 import numpy as np
+import pyximport
+pyximport.install()
 from sklearn.svm import OneClassSVM
 import matplotlib.pyplot as plt
 from deepface import DeepFace
